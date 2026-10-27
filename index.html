@@ -1,0 +1,282 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity Hub</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #101522;
+  color: #f4f7ff;
+  font-family: Arial, sans-serif;
+  line-height: 1.7;
+}
+
+header {
+  padding: 24px 12px;
+  text-align: center;
+  background: #202b43;
+}
+
+header h1 { color: #77ddff; }
+
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  background: #182035;
+  padding: 10px;
+}
+
+button {
+  background: #34476a;
+  color: white;
+  border: 0;
+  padding: 10px 14px;
+  margin: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover { background: #47618d; }
+
+main {
+  max-width: 850px;
+  padding: 18px;
+  margin: auto;
+}
+
+.card {
+  padding: 16px;
+  margin: 18px 0;
+  background: #202b43;
+  border-radius: 12px;
+}
+
+video {
+  width: 100%;
+  max-height: 480px;
+  background: #000;
+  border-radius: 8px;
+}
+
+#status { color: #a6efbd; }
+
+.moving {
+  animation: float 3s ease-in-out infinite alternate;
+}
+
+@keyframes float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+
+.progress {
+  height: 10px;
+  background: #39445a;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#bar {
+  width: 0;
+  height: 100%;
+  background: #77ddff;
+}
+
+footer {
+  text-align: center;
+  padding: 25px;
+  background: #202b43;
+}
+</style>
+</head>
+
+<body>
+<header>
+  <h1 class="moving">Activity Hub</h1>
+  <p>Videos, reading, animations and interactive activities</p>
+  <p id="status">Ready</p>
+</header>
+
+<nav>
+  <button onclick="goTo('home')">Home</button>
+  <button onclick="goTo('videos')">Videos</button>
+  <button onclick="goTo('reading')">Reading</button>
+  <button onclick="goTo('activities')">Activities</button>
+  <button onclick="startAutoScroll()">Start scrolling</button>
+  <button onclick="stopAutoScroll()">Pause scrolling</button>
+  <button onclick="keepScreenAwake()">Keep screen awake</button>
+</nav>
+
+<main>
+  <section id="home" class="card">
+    <h2>Welcome</h2>
+    <p>This page combines media, reading, animations and simple interactions.</p>
+    <p>Time on this page: <strong id="elapsed">0 seconds</strong></p>
+    <div class="progress"><div id="bar"></div></div>
+  </section>
+
+  <section id="videos" class="card">
+    <h2>Video player</h2>
+    <video controls autoplay muted loop playsinline>
+      <source
+        src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        type="video/mp4">
+      Your browser does not support this video.
+    </video>
+    <p>A muted nature video. Playback depends on browser permissions and network access.</p>
+  </section>
+
+  <section id="reading" class="card">
+    <h2>Reading feed</h2>
+    <div id="articles"></div>
+  </section>
+
+  <section id="activities" class="card">
+    <h2>Interactive activity</h2>
+    <p>Click the button to change the display.</p>
+    <button onclick="changeMessage()">Change message</button>
+    <p id="message">Welcome to the activity area!</p>
+    <button onclick="addCounter()">Click counter</button>
+    <p>Clicks: <span id="counter">0</span></p>
+  </section>
+</main>
+
+<footer>
+  Activity Hub · HTML · CSS · JavaScript
+</footer>
+
+<script>
+let scrolling = false;
+let scrollTimer;
+let wakeLock = null;
+let seconds = 0;
+let clicks = 0;
+
+const statusText = document.getElementById("status");
+
+function goTo(id) {
+  document.getElementById(id).scrollIntoView({
+    behavior: "smooth"
+  });
+}
+
+function startAutoScroll() {
+  if (scrolling) return;
+
+  scrolling = true;
+  statusText.textContent = "Automatic scrolling active";
+  scrollStep();
+}
+
+function stopAutoScroll() {
+  scrolling = false;
+  clearTimeout(scrollTimer);
+  statusText.textContent = "Scrolling paused";
+}
+
+function scrollStep() {
+  if (!scrolling) return;
+
+  const maxScroll =
+    document.documentElement.scrollHeight - innerHeight;
+
+  if (maxScroll > 0) {
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    const distance = 150 + Math.random() * 450;
+
+    let next = scrollY + direction * distance;
+
+    if (next < 0) next = Math.min(distance, maxScroll);
+    if (next > maxScroll) next = Math.max(0, maxScroll - distance);
+
+    window.scrollTo({
+      top: next,
+      behavior: "smooth"
+    });
+  }
+
+  scrollTimer = setTimeout(
+    scrollStep,
+    2000 + Math.random() * 3000
+  );
+}
+
+async function keepScreenAwake() {
+  if (!("wakeLock" in navigator)) {
+    statusText.textContent = "Wake lock is not supported";
+    return;
+  }
+
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    statusText.textContent = "Screen wake lock active";
+  } catch (error) {
+    statusText.textContent = "Screen wake request denied";
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (
+    document.visibilityState === "visible" &&
+    scrolling &&
+    !wakeLock
+  ) {
+    keepScreenAwake();
+  }
+});
+
+function changeMessage() {
+  const messages = [
+    "Explore something new!",
+    "Discover more content!",
+    "Keep learning and creating!",
+    "Enjoy the video feed!",
+    "Welcome back!"
+  ];
+
+  document.getElementById("message").textContent =
+    messages[Math.floor(Math.random() * messages.length)];
+}
+
+function addCounter() {
+  clicks++;
+  document.getElementById("counter").textContent = clicks;
+}
+
+const paragraphs = [
+  "Technology creates new opportunities for learning, creativity and communication.",
+  "Nature offers fascinating details, from flowers opening in sunlight to clouds crossing the sky.",
+  "Reading regularly introduces new concepts and helps people develop their knowledge.",
+  "Programming combines logical thinking with creativity to build useful digital tools.",
+  "Exploring unfamiliar subjects can inspire new questions and interesting discoveries."
+];
+
+const articleContainer = document.getElementById("articles");
+
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement("p");
+  p.textContent = paragraphs[i % paragraphs.length];
+  articleContainer.appendChild(p);
+}
+
+setInterval(() => {
+  seconds++;
+  document.getElementById("elapsed").textContent =
+    seconds + " seconds";
+
+  document.getElementById("bar").style.width =
+    (seconds % 101) + "%";
+}, 1000);
+</script>
+</body>
+</html>
